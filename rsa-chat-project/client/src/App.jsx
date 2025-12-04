@@ -312,7 +312,7 @@ function App() {
       {/* panel debug buat liat proses enkripsi */}
       <div className="debug-panel">
         <div className="debug-header">
-          <h3>🔐 RSA Debug Console</h3>
+          <h3>☕ HuTalks</h3>
           <p>Real-time encryption/decryption log</p>
         </div>
         
@@ -335,7 +335,7 @@ function App() {
           </div>
           
           <div className="debug-section">
-            <h4>📚 How RSA Works</h4>
+            <h4>📚 HuTalks UserGuide</h4>
             <div className="how-rsa-works">
               <p><strong>1. Key Generation:</strong><br/>
               Generate p, q (primes), compute n=p×q, φ=(p-1)(q-1), choose e, compute d=e⁻¹ mod φ</p>
