@@ -21,10 +21,12 @@ function App() {
   const [isGeneratingKeys, setIsGeneratingKeys] = useState(false);
   
   // state buat chat dan kunci rsa
-  const [messages, setMessages] = useState([]); // format: { sender, text, isMe }
+  // messages sekarang format object: { "username": [array of messages] }
+  const [messagesByUser, setMessagesByUser] = useState({}); // { "user1": [{...}, {...}], "user2": [{...}] }
   const [inputMsg, setInputMsg] = useState("");
   const [myKeys, setMyKeys] = useState(null);
   const [debugLog, setDebugLog] = useState("Waiting for activity..."); // log enkripsi/dekripsi
+  const [unreadCounts, setUnreadCounts] = useState({}); // notif pesan belum dibaca
   const messagesEndRef = useRef(null);
 
   // auto scroll ke bawah kalo ada pesan baru
@@ -32,9 +34,12 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // ambil pesan untuk user yang dipilih
+  const currentMessages = selectedUser ? (messagesByUser[selectedUser] || []) : [];
+
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [currentMessages, selectedUser]);
 
   // listener buat cek status koneksi
   useEffect(() => {
@@ -118,13 +123,19 @@ function App() {
           cipherText: cipherText
         });
 
-        // tampilin pesan asli di ui sendiri
-        setMessages((prev) => [...prev, { 
-          sender: "Me", 
-          text: messageToSend, 
-          isMe: true,
-          timestamp: new Date().toLocaleTimeString()
-        }]);
+        // tampilin pesan asli di chat user yang dipilih
+        setMessagesByUser((prev) => ({
+          ...prev,
+          [selectedUser]: [
+            ...(prev[selectedUser] || []),
+            { 
+              sender: "Me", 
+              text: messageToSend, 
+              isMe: true,
+              timestamp: new Date().toLocaleTimeString()
+            }
+          ]
+        }));
         setInputMsg("");
       } catch (error) {
         console.error("encryption error:", error);
@@ -158,23 +169,44 @@ function App() {
           // dekripsi pake private key sendiri
           const originalText = decrypt(data.cipherText, myKeys.privateKey);
           
-          setMessages((prev) => [...prev, { 
-            sender: data.from, 
-            text: originalText, 
-            isMe: false,
-            timestamp: new Date().toLocaleTimeString()
-          }]);
+          // simpen pesan di kolom chat pengirim
+          setMessagesByUser((prev) => ({
+            ...prev,
+            [data.from]: [
+              ...(prev[data.from] || []),
+              { 
+                sender: data.from, 
+                text: originalText, 
+                isMe: false,
+                timestamp: new Date().toLocaleTimeString()
+              }
+            ]
+          }));
+
+          // tambah notif HANYA kalo bukan chat yang lagi dibuka
+          if (selectedUser !== data.from) {
+            setUnreadCounts((prev) => ({
+              ...prev,
+              [data.from]: (prev[data.from] || 0) + 1
+            }));
+          }
           
           // update log
           setDebugLog(`📥 [received]\nfrom: ${data.from}\ncipher (${data.cipherText.length} blocks): [${data.cipherText.slice(0, 2).join(", ")}...]\ndecrypted: "${originalText}"`);
         } catch (error) {
           console.error("decryption error:", error);
-          setMessages((prev) => [...prev, { 
-            sender: data.from, 
-            text: "[Decryption Error]", 
-            isMe: false,
-            timestamp: new Date().toLocaleTimeString()
-          }]);
+          setMessagesByUser((prev) => ({
+            ...prev,
+            [data.from]: [
+              ...(prev[data.from] || []),
+              { 
+                sender: data.from, 
+                text: "[Decryption Error]", 
+                isMe: false,
+                timestamp: new Date().toLocaleTimeString()
+              }
+            ]
+          }));
         }
       }
     });
@@ -183,7 +215,7 @@ function App() {
       socket.off("update_user_list");
       socket.off("receive_message");
     };
-  }, [myKeys, username]);
+  }, [myKeys, username, selectedUser]);
 
   // render halaman login
   if (!isLoggedIn) {
@@ -253,11 +285,19 @@ function App() {
             onlineUsers.map((u) => (
               <div 
                 key={u} 
-                onClick={() => setSelectedUser(u)}
+                onClick={() => {
+                  setSelectedUser(u);
+                  // hapus notif unread pas buka chat
+                  setUnreadCounts((prev) => ({ ...prev, [u]: 0 }));
+                }}
                 className={`user-item ${selectedUser === u ? 'selected' : ''}`}
               >
                 <div className="avatar">👤</div>
                 <span className="username">{u}</span>
+                {/* badge notif pesan belum dibaca */}
+                {unreadCounts[u] > 0 && selectedUser !== u && (
+                  <span className="unread-badge">{unreadCounts[u]}</span>
+                )}
               </div>
             ))
           )}
@@ -272,17 +312,21 @@ function App() {
         </div>
         
         <div className="chat-messages">
-          {messages.length === 0 ? (
+          {!selectedUser ? (
+            <div className="empty-chat">
+              <div style={{ fontSize: '4rem', marginBottom: '20px', opacity: 0.5 }}>👈</div>
+              <p>Select a user from the sidebar to start chatting</p>
+            </div>
+          ) : currentMessages.length === 0 ? (
             <div className="empty-chat">
               <div style={{ fontSize: '4rem', marginBottom: '20px', opacity: 0.5 }}>🔒</div>
-              <p>Messages are end-to-end encrypted with RSA</p>
-              <p>Select a user and start chatting!</p>
+              <p>No messages with {selectedUser} yet</p>
+              <p>Send your first encrypted message!</p>
             </div>
           ) : (
-            messages.map((msg, idx) => (
+            currentMessages.map((msg, idx) => (
               <div key={idx} className={`message ${msg.isMe ? 'sent' : 'received'}`}>
                 <div className="message-bubble">
-                  {!msg.isMe && <div className="message-sender">{msg.sender}</div>}
                   <div className="message-text">{msg.text}</div>
                   <div className="message-time">{msg.timestamp}</div>
                 </div>

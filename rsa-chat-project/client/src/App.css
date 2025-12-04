@@ -180,6 +180,7 @@ body {
   align-items: center;
   gap: 12px;
   background: rgba(255, 255, 255, 0.1);
+  position: relative;
 }
 
 .user-item:hover {
@@ -190,6 +191,26 @@ body {
 .user-item.selected {
   background: linear-gradient(135deg, #d9c7b2 0%, #b89d84 100%);
   box-shadow: 0 4px 15px rgba(184, 157, 132, 0.4);
+}
+
+/* badge notifikasi pesan belum dibaca */
+.unread-badge {
+  position: absolute;
+  right: 10px;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 12px;
+  min-width: 20px;
+  text-align: center;
+  animation: pulse-badge 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
 }
 
 .no-users {
