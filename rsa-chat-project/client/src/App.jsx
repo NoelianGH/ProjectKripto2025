@@ -190,7 +190,7 @@ function App() {
     return (
       <div className="login-container">
         <div className="login-box">
-          <h2>🔐 RSA Secure Chat</h2>
+          <h2>☕ HuTalks</h2>
           <p className="subtitle">End-to-End Encrypted Messaging with RSA Algorithm</p>
           
           <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
